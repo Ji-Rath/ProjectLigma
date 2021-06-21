@@ -24,7 +24,6 @@ EBTNodeResult::Type UBTTask_GetSplinePosition::ExecuteTask(UBehaviorTreeComponen
 	if (ensureMsgf(Spline, TEXT("Error in task %s: Cannot fetch spline component or there are no valid points!")))
 	{
 		int32 SplinePointCount = Spline->GetNumberOfSplinePoints();
-		if (ensureMsgf(SplinePointCount <= 0, TEXT("Spline component does not have any points!"))) { return EBTNodeResult::Failed; }
 
 		// Return spline point location and update patrol index value
 		FVector PatrolPosition = Spline->GetLocationAtSplinePoint(IndexValue, ESplineCoordinateSpace::World);

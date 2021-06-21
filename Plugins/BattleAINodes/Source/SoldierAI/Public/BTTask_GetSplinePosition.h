@@ -20,10 +20,6 @@ public:
 	UPROPERTY(EditAnywhere)
 	FBlackboardKeySelector PatrolSpline;
 
-	/** Whether to increment index additively or randomly */
-	UPROPERTY(EditAnywhere)
-	bool bRandomIndex = false;
-
 	/** The output spline position */
 	UPROPERTY(EditAnywhere)
 	FBlackboardKeySelector OutPosition;
