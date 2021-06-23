@@ -16,9 +16,6 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, meta = (UseComponentPicker, AllowedClasses = "SplineComponent", AllowAnyActor))
 	FComponentReference PatrolSpline;
 
-	UPROPERTY(VisibleAnywhere)
-	UAIPerceptionComponent* PerceptionComponent;
-
 	AEnemyCharacter();
 
 protected:

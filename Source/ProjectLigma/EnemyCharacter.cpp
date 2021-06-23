@@ -1,10 +1,11 @@
 #include "EnemyCharacter.h"
+#include "Perception/AIPerceptionComponent.h"
 
 
 
 AEnemyCharacter::AEnemyCharacter()
 {
-	PerceptionComponent = CreateDefaultSubobject<UAIPerceptionComponent>(TEXT("Perception Component"));
+
 }
 
 void AEnemyCharacter::BeginPlay()
