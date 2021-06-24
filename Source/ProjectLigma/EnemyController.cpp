@@ -27,6 +27,7 @@ void AEnemyController::Tick(float DeltaTime)
 
 	if (bSeePlayer)
 	{
+		// Have a small delay before player is fully 'detected'
 		if (!GetWorldTimerManager().TimerExists(PursueSeenPlayerHandle))
 		{
 			FTimerDelegate TimerDelegate;
@@ -36,6 +37,7 @@ void AEnemyController::Tick(float DeltaTime)
 	}
 	else if (GetWorldTimerManager().TimerExists(PursueSeenPlayerHandle))
 	{
+		// Timer is canceled if the player is no longer seen
 		GetWorldTimerManager().ClearTimer(PursueSeenPlayerHandle);
 	}
 }
@@ -44,19 +46,15 @@ void AEnemyController::PerceptionUpdated(AActor* Actor, FAIStimulus Stimulus)
 {
 	const FAISenseID SenseID = Stimulus.Type;
 
+	// Sight stimulus
 	if (SenseID == SightID)
 	{
+		// Input data to blackboard to be computed in BT
 		Blackboard->SetValueAsEnum(BBEnemyState, (uint8)EEnemyState::Searching);
+		Blackboard->SetValueAsVector(BBDestinationVector, Stimulus.StimulusLocation);
 		Blackboard->SetValueAsVector(BBSearchVector, Stimulus.StimulusLocation);
 		bSeePlayer = Stimulus.WasSuccessfullySensed();
 		Blackboard->SetValueAsObject(BBPlayerTarget, Actor);
-
-		/*
-		FTimerDelegate TimerDelegate;
-		TimerDelegate.BindStatic(&AEnemyController::SetEnemyState, EEnemyState::Idle);
-		GetWorldTimerManager().SetTimer(SearchLocationHandle, TimerDelegate, 15.f, false);
-		*/
-		
 	}
 }
 
@@ -67,6 +65,7 @@ void AEnemyController::SetEnemyState(EEnemyState EnemyState)
 
 void AEnemyController::ExpiredStimulus(const FAIStimulus& StimulusStore)
 {
+	// Lose interest if sight stimulus expires
 	if (StimulusStore.Type == SightID)
 	{
 		SetEnemyState(EEnemyState::Idle);
@@ -77,4 +76,6 @@ AEnemyController::AEnemyController()
 {
 	SightID = UAISense::GetSenseID(UAISense_Sight::StaticClass());;
 	HearingID = UAISense::GetSenseID(UAISense_Hearing::StaticClass());;
+
+	PrimaryActorTick.TickInterval = 0.5f;
 }

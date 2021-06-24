@@ -26,6 +26,9 @@ public:
 	FName BBSearchVector;
 
 	UPROPERTY(EditAnywhere)
+	FName BBDestinationVector;
+
+	UPROPERTY(EditAnywhere)
 	FName BBEnemyState;
 
 	UPROPERTY(EditAnywhere)
@@ -34,12 +37,11 @@ public:
 	UPROPERTY(EditAnywhere)
 	float DetectPlayerDelay = 1.f;
 
+	UPROPERTY()
 	bool bSeePlayer = false;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
 	FTimerHandle PursueSeenPlayerHandle;
-
-	FTimerHandle SearchLocationHandle;
 
 protected:
 
@@ -50,6 +52,11 @@ protected:
 	UFUNCTION()
 	void PerceptionUpdated(AActor* Actor, FAIStimulus Stimulus);
 
+	/**
+	 * Set the state of the enemy
+	 * @param EnemyState Idle, Pursuing, Searching
+	 * @return void
+	*/
 	UFUNCTION()
 	void SetEnemyState(EEnemyState EnemyState);
 
