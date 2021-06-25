@@ -24,5 +24,9 @@ public:
 
 	void BeginPlay() override;
 
+	UPROPERTY(EditAnywhere, Category = "Teams")
+	uint8 TeamNumber = FGenericTeamId::NoTeam;
+
+
 };
 

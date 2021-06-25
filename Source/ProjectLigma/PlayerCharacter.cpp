@@ -3,7 +3,7 @@
 
 APlayerCharacter::APlayerCharacter()
 {
-	SetGenericTeamId(FGenericTeamId(2));
+	SetGenericTeamId(FGenericTeamId(TeamNumber));
 }
 
 void APlayerCharacter::SetGenericTeamId(const FGenericTeamId& NewTeamID)

@@ -24,45 +24,45 @@ class PROJECTLIGMA_API AEnemyController : public AAIController
 
 public:
 	
-	UPROPERTY(EditAnywhere)
+	UPROPERTY(EditAnywhere, Category="Blackboard")
 	FName BBSearchVector;
 
-	UPROPERTY(EditAnywhere)
+	UPROPERTY(EditAnywhere, Category = "Blackboard")
 	FName BBDestinationVector;
 
-	UPROPERTY(EditAnywhere)
+	UPROPERTY(EditAnywhere, Category = "Blackboard")
 	FName BBEnemyState;
 
-	UPROPERTY(EditAnywhere)
+	UPROPERTY(EditAnywhere, Category = "Blackboard")
 	FName BBPlayerTarget;
 
-	UPROPERTY(EditAnywhere)
+	UPROPERTY(EditAnywhere, Category = "AI")
 	float AlertnessDetectPlayer = 75.f;
 
 	/** How alert the enemy is 0-100 */
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "AI")
 	float Alertness = 0.f;
 
 	/** Alertness Multiplier for when the player is 'seen', calculated every second. Multiplied against player light level */
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly)
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "AI")
 	float AlertMultiplier = 5.f;
 
 	/** Minimum light level to begin sensing the player */
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly)
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "AI")
 	float MinLightLevel = 0.25f;
 
 	UPROPERTY()
 	bool bSeePlayer = false;
 
 	/** Range to automatically detect player target */
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly)
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "AI")
 	float NearsightRange = 150.f;
 
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "AI")
 	FTimerHandle LoseInterestHandle;
 
 	/** Value to lose alertness every second after not seeing player (after short delay) */
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly)
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "AI")
 	float DisinterestValue = -5.f;
 
 	UPROPERTY(VisibleAnywhere)
@@ -73,6 +73,9 @@ public:
 
 	UFUNCTION(BlueprintCallable)
 	bool IsTargetVisible(FVector Target);
+
+	UPROPERTY(EditAnywhere, Category = "Teams")
+	uint8 TeamNumber = FGenericTeamId::NoTeam;
 
 protected:
 

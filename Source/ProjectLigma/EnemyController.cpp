@@ -9,6 +9,7 @@
 #include "SoldierPerceptionComponent.h"
 #include "LightSenseComponent.h"
 #include "Kismet/KismetMathLibrary.h"
+#include "DrawDebugHelpers.h"
 
 
 void AEnemyController::IncrementAlertness(float Amount)
@@ -37,16 +38,26 @@ void AEnemyController::IncrementAlertness(float Amount)
 
 bool AEnemyController::IsTargetVisible(FVector Target)
 {
-	float LightLevel = LightSense->CalculateLightLevel(Target);
-	float Distance = FVector::Distance(GetPawn()->GetActorLocation(), Target);
-	bool bVisible = LightLevel > MinLightLevel || Distance < NearsightRange;
+	bool bVisible = false;
 
+	if (bSeePlayer)
+	{
+		float LightLevel = LightSense->CalculateLightLevel(Target);
+		float Distance = FVector::Distance(GetPawn()->GetActorLocation(), Target);
+		float AlertRange = UKismetMathLibrary::NormalizeToRange(Alertness, 0.f, 100.f) * (1000.f - NearsightRange);
+		bVisible = (LightLevel > MinLightLevel || Distance < (AlertRange + NearsightRange));
+		
+	}
+	
 	return bVisible;
 }
 
 void AEnemyController::BeginPlay()
 {
 	Super::BeginPlay();
+
+	SightID = UAISense::GetSenseID(UAISense_Sight::StaticClass());;
+	HearingID = UAISense::GetSenseID(UAISense_Hearing::StaticClass());;
 
 	PerceptionComponent->OnTargetPerceptionUpdated.AddDynamic(this, &AEnemyController::PerceptionUpdated);
 
@@ -60,44 +71,39 @@ void AEnemyController::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
 
-	if (bSeePlayer)
+	float AlertRange = UKismetMathLibrary::NormalizeToRange(Alertness, 0.f, 100.f) * (1000.f-NearsightRange);
+	DrawDebugSphere(GetWorld(), GetPawn()->GetActorLocation(), AlertRange + NearsightRange, 10, FColor::Red, false, 0.5f);
+
+	AActor* Player = Cast<AActor>(Blackboard->GetValueAsObject(BBPlayerTarget));
+	if (Player)
 	{
-		AActor* Player = Cast<AActor>(Blackboard->GetValueAsObject(BBPlayerTarget));
 		if (IsTargetVisible(Player->GetActorLocation()))
 		{
+			// Calculate alertness based on target distance and light level
 			float Distance = FVector::Distance(Player->GetActorLocation(), GetPawn()->GetActorLocation());
 			float DistanceMultiplier = (1 - UKismetMathLibrary::NormalizeToRange(Distance, 0.f, 2000.f)) * 5.f;
 			float LightLevel = LightSense->CalculateLightLevel(Player->GetActorLocation());
-			float AlertIncrement = (LightLevel * AlertMultiplier * DistanceMultiplier) * DeltaTime;
+			float AlertIncrement = (AlertMultiplier * DistanceMultiplier) * DeltaTime;
 
 			IncrementAlertness(AlertIncrement);
 
 			if (GetWorldTimerManager().TimerExists(LoseInterestHandle))
 			{
-				// Timer is canceled if the player is no longer seen
+				// Lose Interest timer is canceled if the player is visible
 				GetWorldTimerManager().ClearTimer(LoseInterestHandle);
 			}
 		}
-		else
+		else if (!GetWorldTimerManager().TimerExists(LoseInterestHandle))
 		{
 			// Have a small delay before alertness begins to subtract
-			if (!GetWorldTimerManager().TimerExists(LoseInterestHandle) && Alertness >= 0.f && Alertness <= AlertnessDetectPlayer)
-			{
-				FTimerDelegate TimerDelegate;
-				TimerDelegate.BindUFunction(this, FName("IncrementAlertness"), DisinterestValue);
-				GetWorldTimerManager().SetTimer(LoseInterestHandle, TimerDelegate, 1.f, true, 10.f);
-			}
-		}
-	}
-	else 
-	{
-		// Have a small delay before alertness begins to subtract
-		if (!GetWorldTimerManager().TimerExists(LoseInterestHandle))
-		{
 			FTimerDelegate TimerDelegate;
 			TimerDelegate.BindUFunction(this, FName("IncrementAlertness"), DisinterestValue);
 			GetWorldTimerManager().SetTimer(LoseInterestHandle, TimerDelegate, 1.f, true, 10.f);
 			IncrementAlertness(-5.f);
+
+			// Input data to blackboard to be computed in BT
+			Blackboard->SetValueAsVector(BBDestinationVector, Player->GetActorLocation());
+			Blackboard->SetValueAsVector(BBSearchVector, Player->GetActorLocation());
 		}
 	}
 }
@@ -109,13 +115,6 @@ void AEnemyController::PerceptionUpdated(AActor* Actor, FAIStimulus Stimulus)
 	// Sight stimulus
 	if (SenseID == SightID)
 	{
-		// Only update stimulus position if player is truly 'visible'
-		if (IsTargetVisible(Actor->GetActorLocation()))
-		{
-			// Input data to blackboard to be computed in BT
-			Blackboard->SetValueAsVector(BBDestinationVector, Stimulus.StimulusLocation);
-			Blackboard->SetValueAsVector(BBSearchVector, Stimulus.StimulusLocation);
-		}
 		bSeePlayer = Stimulus.WasSuccessfullySensed();
 		Blackboard->SetValueAsObject(BBPlayerTarget, Actor);
 	}
@@ -131,18 +130,21 @@ void AEnemyController::ExpiredStimulus(const FAIStimulus& StimulusStore)
 	// Lose interest if sight stimulus expires
 	if (StimulusStore.Type == SightID)
 	{
-		SetEnemyState(EEnemyState::Idle);
+		if (!GetWorldTimerManager().TimerExists(LoseInterestHandle))
+		{
+			FTimerDelegate TimerDelegate;
+			TimerDelegate.BindUFunction(this, FName("IncrementAlertness"), DisinterestValue);
+			GetWorldTimerManager().SetTimer(LoseInterestHandle, TimerDelegate, 1.f, true);
+		}
 	}
 }
 
 AEnemyController::AEnemyController()
 {
-	SightID = UAISense::GetSenseID(UAISense_Sight::StaticClass());;
-	HearingID = UAISense::GetSenseID(UAISense_Hearing::StaticClass());;
-
-	PrimaryActorTick.TickInterval = 0.25f;
+	PrimaryActorTick.bCanEverTick = true;
+	PrimaryActorTick.TickInterval = 0.5f;
 
 	LightSense = CreateDefaultSubobject<ULightSenseComponent>(TEXT("Light Sense"));
 
-	SetGenericTeamId(FGenericTeamId(1));
+	SetGenericTeamId(FGenericTeamId(TeamNumber));
 }
