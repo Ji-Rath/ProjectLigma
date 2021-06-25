@@ -110,7 +110,7 @@ void AEnemyController::PerceptionUpdated(AActor* Actor, FAIStimulus Stimulus)
 	if (SenseID == SightID)
 	{
 		// Only update stimulus position if player is truly 'visible'
-		if (IsTargetVisible(Stimulus.StimulusLocation))
+		if (IsTargetVisible(Actor->GetActorLocation()))
 		{
 			// Input data to blackboard to be computed in BT
 			Blackboard->SetValueAsVector(BBDestinationVector, Stimulus.StimulusLocation);
@@ -143,4 +143,6 @@ AEnemyController::AEnemyController()
 	PrimaryActorTick.TickInterval = 0.25f;
 
 	LightSense = CreateDefaultSubobject<ULightSenseComponent>(TEXT("Light Sense"));
+
+	SetGenericTeamId(FGenericTeamId(1));
 }

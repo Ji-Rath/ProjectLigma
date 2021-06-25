@@ -3,6 +3,7 @@
 #include "CoreMinimal.h"
 #include "AIController.h"
 #include "Perception/AIPerceptionTypes.h"
+#include "GenericTeamAgentInterface.h"
 #include "EnemyController.generated.h"
 
 struct FTimerHandle;
