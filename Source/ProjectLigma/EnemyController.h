@@ -77,6 +77,10 @@ public:
 	UPROPERTY(EditAnywhere, Category = "Teams")
 	uint8 TeamNumber = FGenericTeamId::NoTeam;
 
+	/** Returns whether the enemy is within the 'pursue' player threshold */
+	UFUNCTION(BlueprintCallable)
+	bool IsAlert();
+
 protected:
 
 	void BeginPlay() override;

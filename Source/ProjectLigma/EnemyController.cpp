@@ -19,14 +19,25 @@ void AEnemyController::IncrementAlertness(float Amount)
 	if (Alertness <= 0.f)
 	{
 		SetEnemyState(EEnemyState::Idle);
+		Blackboard->SetValueAsObject(BBPlayerTarget, nullptr);
+		bSeePlayer = false;
 	}
 
 	if (Alertness > 0.f)
 	{
 		//Pursue player if enemy is within alert range
-		if (Alertness >= AlertnessDetectPlayer && Amount > 0.f)
+		if (Amount > 0.f)
 		{
-			SetEnemyState(EEnemyState::Pursuing);
+			if (IsAlert())
+			{
+				SetEnemyState(EEnemyState::Pursuing);
+			}
+
+			if (GetWorldTimerManager().TimerExists(LoseInterestHandle))
+			{
+				// Lose Interest timer is canceled if the player is visible
+				GetWorldTimerManager().ClearTimer(LoseInterestHandle);
+			}
 		}
 		else
 		{
@@ -50,6 +61,11 @@ bool AEnemyController::IsTargetVisible(FVector Target)
 	}
 	
 	return bVisible;
+}
+
+bool AEnemyController::IsAlert()
+{
+	return Alertness >= AlertnessDetectPlayer;
 }
 
 void AEnemyController::BeginPlay()
@@ -86,12 +102,6 @@ void AEnemyController::Tick(float DeltaTime)
 			float AlertIncrement = (AlertMultiplier * DistanceMultiplier) * DeltaTime;
 
 			IncrementAlertness(AlertIncrement);
-
-			if (GetWorldTimerManager().TimerExists(LoseInterestHandle))
-			{
-				// Lose Interest timer is canceled if the player is visible
-				GetWorldTimerManager().ClearTimer(LoseInterestHandle);
-			}
 		}
 		else if (!GetWorldTimerManager().TimerExists(LoseInterestHandle))
 		{
@@ -99,7 +109,7 @@ void AEnemyController::Tick(float DeltaTime)
 			FTimerDelegate TimerDelegate;
 			TimerDelegate.BindUFunction(this, FName("IncrementAlertness"), DisinterestValue);
 			GetWorldTimerManager().SetTimer(LoseInterestHandle, TimerDelegate, 1.f, true, 10.f);
-			IncrementAlertness(-5.f);
+			IncrementAlertness(-1.f);
 
 			// Input data to blackboard to be computed in BT
 			Blackboard->SetValueAsVector(BBDestinationVector, Player->GetActorLocation());
@@ -111,12 +121,56 @@ void AEnemyController::Tick(float DeltaTime)
 void AEnemyController::PerceptionUpdated(AActor* Actor, FAIStimulus Stimulus)
 {
 	const FAISenseID SenseID = Stimulus.Type;
+	AActor* CurrentTarget = Cast<AActor>(Blackboard->GetValueAsObject(BBPlayerTarget));
+	bool bIsSameTarget = Actor == CurrentTarget;
 
 	// Sight stimulus
 	if (SenseID == SightID)
 	{
+		// Dont try to chase another person while already on another guy just because you see them LOL
+		if (bSeePlayer && !bIsSameTarget) { return; }
+
 		bSeePlayer = Stimulus.WasSuccessfullySensed();
-		Blackboard->SetValueAsObject(BBPlayerTarget, Actor);
+		AActor* TargetActor = Actor;
+
+		if (!bSeePlayer)
+		{
+			// If the current target is no longer seen, target another perceived actor if possible
+			for (TMap<TObjectKey<AActor>, FActorPerceptionInfo>::TConstIterator StimActor = PerceptionComponent->GetPerceptualDataConstIterator(); StimActor; ++StimActor)
+			{
+				FActorPerceptionInfo PerceptionInfo = StimActor->Value;
+				for (FAIStimulus Stim : PerceptionInfo.LastSensedStimuli)
+				{
+					// Ensure stimulus is sight and currently seen
+					if (Stim.Type == SightID && Stim.WasSuccessfullySensed())
+					{
+						TargetActor = Cast<AActor>(StimActor->Key.ResolveObjectPtr());
+						bSeePlayer = true;
+					}
+				}
+			}
+		}
+
+		Blackboard->SetValueAsObject(BBPlayerTarget, TargetActor);
+	}
+
+	// Hearing stimulus
+	if (SenseID == HearingID)
+	{
+		// Accept hearing stimulus only when the player position is unknown, and ignore if hearing stimulus expired
+		if (!bSeePlayer && !Stimulus.IsExpired())
+		{
+			// Make controller alert on initial sound stimulus from an actor
+			if (!bIsSameTarget)
+			{
+				IncrementAlertness(5);
+				Blackboard->SetValueAsObject(BBPlayerTarget, Actor);
+			}
+
+			// Input data to blackboard to be computed in BT
+			Blackboard->SetValueAsVector(BBDestinationVector, Stimulus.StimulusLocation);
+			Blackboard->SetValueAsVector(BBSearchVector, Stimulus.StimulusLocation);
+		}
 	}
 }
 
@@ -135,6 +189,7 @@ void AEnemyController::ExpiredStimulus(const FAIStimulus& StimulusStore)
 			FTimerDelegate TimerDelegate;
 			TimerDelegate.BindUFunction(this, FName("IncrementAlertness"), DisinterestValue);
 			GetWorldTimerManager().SetTimer(LoseInterestHandle, TimerDelegate, 1.f, true);
+			IncrementAlertness(-1.f);
 		}
 	}
 }
