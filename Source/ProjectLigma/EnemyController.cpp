@@ -16,7 +16,7 @@ void AEnemyController::IncrementAlertness(float Amount)
 {
 	Alertness = FMath::Clamp(Alertness + Amount, 0.f, 100.f);
 
-	if (Alertness <= 0.f)
+	if (Blackboard && Alertness <= 0.f)
 	{
 		SetEnemyState(EEnemyState::Idle);
 		Blackboard->SetValueAsObject(BBPlayerTarget, nullptr);
@@ -53,7 +53,8 @@ bool AEnemyController::IsTargetVisible(FVector Target)
 
 	if (bSeePlayer)
 	{
-		float LightLevel = LightSense->CalculateLightLevel(Target);
+		TArray<TSubclassOf<AActor>> LightActors = { AActor::StaticClass() };
+		float LightLevel = ULightSenseComponent::CalculateLightLevel(GetWorld(), Target, LightActors);
 		float Distance = FVector::Distance(GetPawn()->GetActorLocation(), Target);
 		float AlertRange = UKismetMathLibrary::NormalizeToRange(Alertness, 0.f, 100.f) * (1000.f - NearsightRange);
 		bVisible = (LightLevel > MinLightLevel || Distance < (AlertRange + NearsightRange));
@@ -88,38 +89,44 @@ void AEnemyController::Tick(float DeltaTime)
 	Super::Tick(DeltaTime);
 
 	float AlertRange = UKismetMathLibrary::NormalizeToRange(Alertness, 0.f, 100.f) * (1000.f-NearsightRange);
-	DrawDebugSphere(GetWorld(), GetPawn()->GetActorLocation(), AlertRange + NearsightRange, 10, FColor::Red, false, 0.5f);
+	//DrawDebugSphere(GetWorld(), GetPawn()->GetActorLocation(), AlertRange + NearsightRange, 10, FColor::Red, false, 0.5f);
 
-	AActor* Player = Cast<AActor>(Blackboard->GetValueAsObject(BBPlayerTarget));
-	if (Player)
+	if (Blackboard)
 	{
-		if (IsTargetVisible(Player->GetActorLocation()))
+		AActor* Player = Cast<AActor>(Blackboard->GetValueAsObject(BBPlayerTarget));
+		if (Player)
 		{
-			// Calculate alertness based on target distance and light level
-			float Distance = FVector::Distance(Player->GetActorLocation(), GetPawn()->GetActorLocation());
-			float DistanceMultiplier = (1 - UKismetMathLibrary::NormalizeToRange(Distance, 0.f, 2000.f)) * 5.f;
-			float LightLevel = LightSense->CalculateLightLevel(Player->GetActorLocation());
-			float AlertIncrement = (AlertMultiplier * DistanceMultiplier) * DeltaTime;
+			if (IsTargetVisible(Player->GetActorLocation()))
+			{
+				TArray<TSubclassOf<AActor>> LightActors = { AActor::StaticClass() };
+				// Calculate alertness based on target distance and light level
+				float Distance = FVector::Distance(Player->GetActorLocation(), GetPawn()->GetActorLocation());
+				float DistanceMultiplier = (1 - UKismetMathLibrary::NormalizeToRange(Distance, 0.f, 2000.f)) * 5.f;
+				float LightLevel = ULightSenseComponent::CalculateLightLevel(GetWorld(), Player->GetActorLocation(), LightActors);
+				float AlertIncrement = (AlertMultiplier * DistanceMultiplier) * DeltaTime;
 
-			IncrementAlertness(AlertIncrement);
-		}
-		else if (!GetWorldTimerManager().TimerExists(LoseInterestHandle))
-		{
-			// Have a small delay before alertness begins to subtract
-			FTimerDelegate TimerDelegate;
-			TimerDelegate.BindUFunction(this, FName("IncrementAlertness"), DisinterestValue);
-			GetWorldTimerManager().SetTimer(LoseInterestHandle, TimerDelegate, 1.f, true, 10.f);
-			IncrementAlertness(-1.f);
+				IncrementAlertness(AlertIncrement);
+			}
+			else if (!GetWorldTimerManager().TimerExists(LoseInterestHandle))
+			{
+				// Have a small delay before alertness begins to subtract
+				FTimerDelegate TimerDelegate;
+				TimerDelegate.BindUFunction(this, FName("IncrementAlertness"), DisinterestValue);
+				GetWorldTimerManager().SetTimer(LoseInterestHandle, TimerDelegate, 1.f, true, 10.f);
+				IncrementAlertness(-1.f);
 
-			// Input data to blackboard to be computed in BT
-			Blackboard->SetValueAsVector(BBDestinationVector, Player->GetActorLocation());
-			Blackboard->SetValueAsVector(BBSearchVector, Player->GetActorLocation());
+				// Input data to blackboard to be computed in BT
+				Blackboard->SetValueAsVector(BBDestinationVector, Player->GetActorLocation());
+				Blackboard->SetValueAsVector(BBSearchVector, Player->GetActorLocation());
+			}
 		}
 	}
 }
 
 void AEnemyController::PerceptionUpdated(AActor* Actor, FAIStimulus Stimulus)
 {
+	if (!Blackboard) { return; }
+
 	const FAISenseID SenseID = Stimulus.Type;
 	AActor* CurrentTarget = Cast<AActor>(Blackboard->GetValueAsObject(BBPlayerTarget));
 	bool bIsSameTarget = Actor == CurrentTarget;
@@ -198,8 +205,6 @@ AEnemyController::AEnemyController()
 {
 	PrimaryActorTick.bCanEverTick = true;
 	PrimaryActorTick.TickInterval = 0.5f;
-
-	LightSense = CreateDefaultSubobject<ULightSenseComponent>(TEXT("Light Sense"));
 
 	SetGenericTeamId(FGenericTeamId(TeamNumber));
 }

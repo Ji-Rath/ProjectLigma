@@ -65,9 +65,6 @@ public:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "AI")
 	float DisinterestValue = -5.f;
 
-	UPROPERTY(VisibleAnywhere)
-	ULightSenseComponent* LightSense;
-
 	UFUNCTION(BlueprintCallable)
 	void IncrementAlertness(float Amount);
 

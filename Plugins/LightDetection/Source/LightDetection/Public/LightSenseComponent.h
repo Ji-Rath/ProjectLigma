@@ -24,8 +24,8 @@ public:
 	 * @param SurfacePos Surface to get light level of
 	 * @return float LightLevel, 0 - Not visible,  > 1 - Fully visible
 	*/
-	UFUNCTION(BlueprintCallable)
-	float CalculateLightLevel(const FVector& SurfacePos) const;
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category=LightSense, meta = (WorldContext = "WorldContextObject"))
+	static float CalculateLightLevel(UObject* WorldContextObject, const FVector& SurfacePos, const TArray<TSubclassOf<AActor>> ActorLights, const float TraceDistance = 2000.f);
 
 	/**
 	 * Calculate the light level of the surface for one light component
@@ -33,8 +33,8 @@ public:
 	 * @param SurfacePos
 	 * @return float Light level
 	*/
-	UFUNCTION()
-	float GetSingleLightLevel(ULightComponent* Light, const FVector& SurfacePos) const;
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category = LightSense, meta = (WorldContext = "WorldContextObject"))
+	static float GetSingleLightLevel(UObject* WorldContextObject, const ULightComponent* Light, const FVector& SurfacePos, TArray<AActor*> ActorsToIgnore, const float TraceDistance = 2000.f, const ECollisionChannel Channel = ECC_Visibility);
 
 	void TickComponent(float DeltaTime, enum ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
 
@@ -56,13 +56,13 @@ public:
 private:
 	
 	UFUNCTION()
-	float GetSpotLightLevel(USpotLightComponent* Light, const FVector& SurfacePos) const;
+	static float GetSpotLightLevel(const UWorld* World, const USpotLightComponent* Light, const FVector& SurfacePos, const ECollisionChannel Channel = ECC_Visibility);
 
 	UFUNCTION()
-	float GetPointLightLevel(UPointLightComponent* Light, const FVector& SurfacePos) const;
+	static float GetPointLightLevel(const UWorld* World, const UPointLightComponent* Light, const FVector& SurfacePos, TArray<AActor*> ActorsToIgnore, const ECollisionChannel Channel = ECC_Visibility);
 
 	UFUNCTION()
-	float GetDirectionalLightLevel(UDirectionalLightComponent* Light, const FVector& SurfacePos) const;
+	static float GetDirectionalLightLevel(const UWorld* World, const UDirectionalLightComponent* Light, const FVector& SurfacePos, const float TraceDistance = 2000.f);
 
 	/** The current light level */
 	UPROPERTY()
