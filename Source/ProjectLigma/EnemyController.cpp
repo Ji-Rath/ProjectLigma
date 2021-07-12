@@ -55,7 +55,7 @@ bool AEnemyController::IsTargetVisible(FVector Target)
 	{
 		TArray<TSubclassOf<AActor>> LightActors = { AActor::StaticClass() };
 		TArray<FHitResult> Hit;
-		float LightLevel = ULightSenseComponent::CalculateLightLevel(GetWorld(), Target, LightActors, Hit);
+		float LightLevel = ULightSenseComponent::CalculateLightLevel(GetWorld(), Target, LightActors, Hit, {});
 		float Distance = FVector::Distance(GetPawn()->GetActorLocation(), Target);
 		float AlertRange = UKismetMathLibrary::NormalizeToRange(Alertness, 0.f, 100.f) * (1000.f - NearsightRange);
 		bVisible = (LightLevel > MinLightLevel || Distance < (AlertRange + NearsightRange));
@@ -104,7 +104,7 @@ void AEnemyController::Tick(float DeltaTime)
 				float Distance = FVector::Distance(Player->GetActorLocation(), GetPawn()->GetActorLocation());
 				float DistanceMultiplier = (1 - UKismetMathLibrary::NormalizeToRange(Distance, 0.f, 2000.f)) * 5.f;
 				TArray<FHitResult> Hit;
-				float LightLevel = ULightSenseComponent::CalculateLightLevel(GetWorld(), Player->GetActorLocation(), LightActors, Hit);
+				float LightLevel = ULightSenseComponent::CalculateLightLevel(GetWorld(), Player->GetActorLocation(), LightActors, Hit, {});
 				float AlertIncrement = (AlertMultiplier * DistanceMultiplier) * DeltaTime;
 
 				IncrementAlertness(AlertIncrement);
@@ -121,6 +121,14 @@ void AEnemyController::Tick(float DeltaTime)
 				Blackboard->SetValueAsVector(BBDestinationVector, Player->GetActorLocation());
 				Blackboard->SetValueAsVector(BBSearchVector, Player->GetActorLocation());
 			}
+		}
+		else if (!GetWorldTimerManager().TimerExists(LoseInterestHandle))
+		{
+			// Have a small delay before alertness begins to subtract
+			FTimerDelegate TimerDelegate;
+			TimerDelegate.BindUFunction(this, FName("IncrementAlertness"), DisinterestValue);
+			GetWorldTimerManager().SetTimer(LoseInterestHandle, TimerDelegate, 1.f, true, 10.f);
+			IncrementAlertness(-1.f);
 		}
 	}
 }

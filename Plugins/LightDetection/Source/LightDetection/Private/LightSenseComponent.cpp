@@ -8,7 +8,7 @@
 #include "Components/LocalLightComponent.h"
 #include "EngineUtils.h"
 
-float ULightSenseComponent::CalculateLightLevel(UObject* WorldContextObject, const FVector& SurfacePos, const TArray<TSubclassOf<AActor>> ActorLights, TArray<FHitResult>& OutHits, const float TraceDistance /*= 2000.f*/)
+float ULightSenseComponent::CalculateLightLevel(UObject* WorldContextObject, const FVector& SurfacePos, const TArray<TSubclassOf<AActor>> ActorLights, TArray<FHitResult>& OutHits, TArray<FName> IgnoreLightTags, const float TraceDistance /*= 2000.f*/, const bool bUsePointLights /*= true*/, const bool bUseSpotlights /*= true*/, const bool bUseDirectionalLights /*= true*/)
 {
 	UWorld* World = GEngine->GetWorldFromContextObject(WorldContextObject, EGetWorldErrorMode::LogAndReturnNull);
 
@@ -32,7 +32,7 @@ float ULightSenseComponent::CalculateLightLevel(UObject* WorldContextObject, con
 			FHitResult Hit;
 			for (ULightComponent* Light : Lights)
 			{
-				LightVisibility += GetSingleLightLevel(WorldContextObject, Light, SurfacePos, {}, Hit, TraceDistance);
+				LightVisibility += GetSingleLightLevel(WorldContextObject, Light, SurfacePos, {}, Hit, IgnoreLightTags, TraceDistance, ECC_Visibility, bUsePointLights, bUseSpotlights, bUseDirectionalLights);
 				OutHits.Add(Hit);
 			}
 		}
@@ -41,14 +41,22 @@ float ULightSenseComponent::CalculateLightLevel(UObject* WorldContextObject, con
 	return LightVisibility;
 }
 
-float ULightSenseComponent::GetSingleLightLevel(UObject* WorldContextObject, const ULightComponent* Light, const FVector& SurfacePos, TArray<AActor*> ActorsToIgnore, FHitResult& OutHit, const float TraceDistance /*= 2000.f*/, const ECollisionChannel Channel /*= ECC_Visibility*/)
+float ULightSenseComponent::GetSingleLightLevel(UObject* WorldContextObject, const ULightComponent* Light, const FVector& SurfacePos, TArray<AActor*> ActorsToIgnore, FHitResult& OutHit, TArray<FName> IgnoreLightTags, const float TraceDistance /*= 2000.f*/, const ECollisionChannel Channel /*= ECC_Visibility*/, const bool bUsePointLights /*= true*/, const bool bUseSpotlights /*= true*/, const bool bUseDirectionalLights /*= true*/)
 {
 	UWorld* World = GEngine->GetWorldFromContextObject(WorldContextObject, EGetWorldErrorMode::LogAndReturnNull);
-
+	
 	float LightStrength = 0.f;
 	// Ensure Light component is valid
 	if (Light)
 	{
+		for (FName TagCheck : IgnoreLightTags)
+		{
+			if (Light->ComponentHasTag(TagCheck))
+			{
+				return 0.f;
+			}
+		}
+
 		// Make sure light component is emitting light
 		bool bIsOn = !FMath::IsNearlyEqual(Light->Intensity, 0.f);
 		if (bIsOn)
@@ -61,17 +69,20 @@ float ULightSenseComponent::GetSingleLightLevel(UObject* WorldContextObject, con
 				{
 					if (auto* SpotLight = Cast<USpotLightComponent>(Light))
 					{
-						LightStrength = GetSpotLightLevel(World, SpotLight, SurfacePos, OutHit, Channel);
+						if (bUseSpotlights)
+							LightStrength = GetSpotLightLevel(World, SpotLight, SurfacePos, OutHit, Channel);
 					}
 					else if (auto* PointLight = Cast<UPointLightComponent>(Light))
 					{
-						LightStrength = GetPointLightLevel(World, PointLight, SurfacePos, ActorsToIgnore, OutHit, Channel);
+						if (bUsePointLights && !PointLight->IsA(USpotLightComponent::StaticClass()))
+							LightStrength = GetPointLightLevel(World, PointLight, SurfacePos, ActorsToIgnore, OutHit, Channel);
 					}
 				}
 			}
 			else if (auto* DirectionalLight = Cast<UDirectionalLightComponent>(Light))
 			{
-				LightStrength = GetDirectionalLightLevel(World, DirectionalLight, SurfacePos, OutHit, TraceDistance);
+				if (bUseDirectionalLights)
+					LightStrength = GetDirectionalLightLevel(World, DirectionalLight, SurfacePos, OutHit, TraceDistance);
 			}
 		}
 	}
@@ -96,7 +107,7 @@ void ULightSenseComponent::TickComponent(float DeltaTime, enum ELevelTick TickTy
 	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
 
 	TArray<FHitResult> Hit;
-	LightLevel = CalculateLightLevel(GetWorld(), GetOwner()->GetActorLocation(), LightActors, Hit, LightTraceDistance);
+	LightLevel = CalculateLightLevel(GetWorld(), GetOwner()->GetActorLocation(), LightActors, Hit, IgnoreLightComponentTags, LightTraceDistance, bUsePointLights, bUseSpotlights, bUseDirectionalLights);
 }
 
 void ULightSenseComponent::BeginPlay()
