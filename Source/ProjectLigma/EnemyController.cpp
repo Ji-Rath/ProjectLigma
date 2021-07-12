@@ -51,10 +51,11 @@ bool AEnemyController::IsTargetVisible(FVector Target)
 {
 	bool bVisible = false;
 
-	if (bSeePlayer)
+	if (GetPawn() && bSeePlayer)
 	{
 		TArray<TSubclassOf<AActor>> LightActors = { AActor::StaticClass() };
-		float LightLevel = ULightSenseComponent::CalculateLightLevel(GetWorld(), Target, LightActors);
+		TArray<FHitResult> Hit;
+		float LightLevel = ULightSenseComponent::CalculateLightLevel(GetWorld(), Target, LightActors, Hit);
 		float Distance = FVector::Distance(GetPawn()->GetActorLocation(), Target);
 		float AlertRange = UKismetMathLibrary::NormalizeToRange(Alertness, 0.f, 100.f) * (1000.f - NearsightRange);
 		bVisible = (LightLevel > MinLightLevel || Distance < (AlertRange + NearsightRange));
@@ -102,7 +103,8 @@ void AEnemyController::Tick(float DeltaTime)
 				// Calculate alertness based on target distance and light level
 				float Distance = FVector::Distance(Player->GetActorLocation(), GetPawn()->GetActorLocation());
 				float DistanceMultiplier = (1 - UKismetMathLibrary::NormalizeToRange(Distance, 0.f, 2000.f)) * 5.f;
-				float LightLevel = ULightSenseComponent::CalculateLightLevel(GetWorld(), Player->GetActorLocation(), LightActors);
+				TArray<FHitResult> Hit;
+				float LightLevel = ULightSenseComponent::CalculateLightLevel(GetWorld(), Player->GetActorLocation(), LightActors, Hit);
 				float AlertIncrement = (AlertMultiplier * DistanceMultiplier) * DeltaTime;
 
 				IncrementAlertness(AlertIncrement);
