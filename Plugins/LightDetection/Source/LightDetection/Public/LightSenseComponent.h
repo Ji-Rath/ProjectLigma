@@ -33,8 +33,8 @@ public:
 	 * @param SurfacePos
 	 * @return float Light level
 	*/
-	UFUNCTION(BlueprintCallable, BlueprintPure, Category = LightSense, meta = (WorldContext = "WorldContextObject", AutoCreateRefTerm = "ActorLights, IgnoreLightTags", AdvancedDisplay = 5))
-	static float GetSingleLightLevel(UObject* WorldContextObject, const ULightComponent* Light, const FVector& SurfacePos, TArray<AActor*> ActorsToIgnore, FHitResult& OutHit, TArray<FName> IgnoreLightTags, const float TraceDistance = 2000.f, const ECollisionChannel Channel = ECC_Visibility, const bool bUsePointLights = true, const bool bUseSpotlights = true, const bool bUseDirectionalLights = true);
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category = LightSense, meta = (WorldContext = "WorldContextObject", AutoCreateRefTerm = "ActorLights, IgnoreLightTags, ActorsToIgnore", AdvancedDisplay = 5))
+	static float GetSingleLightLevel(UObject* WorldContextObject, const ULightComponent* Light, const FVector& SurfacePos, TArray<AActor*> ActorsToIgnore, FHitResult& OutHit, TArray<FName> IgnoreLightTags, const float TraceDistance = 2000.f, const ECollisionChannel Channel = ECC_Visibility, const bool bUsePointLights = true, const bool bUseSpotlights = true, const bool bUseDirectionalLights = true, const bool bDebug = false);
 
 	void TickComponent(float DeltaTime, enum ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
 
@@ -68,13 +68,13 @@ public:
 private:
 	
 	UFUNCTION()
-	static float GetSpotLightLevel(const UWorld* World, const USpotLightComponent* Light, const FVector& SurfacePos, FHitResult& OutHit, const ECollisionChannel Channel = ECC_Visibility);
+	static float GetSpotLightLevel(const UWorld* World, const USpotLightComponent* Light, const FVector& SurfacePos, TArray<AActor*> ActorsToIgnore, FHitResult& OutHit, const ECollisionChannel Channel = ECC_Visibility);
 
 	UFUNCTION()
 	static float GetPointLightLevel(const UWorld* World, const UPointLightComponent* Light, const FVector& SurfacePos, TArray<AActor*> ActorsToIgnore, FHitResult& OutHit, const ECollisionChannel Channel = ECC_Visibility);
 
 	UFUNCTION()
-	static float GetDirectionalLightLevel(const UWorld* World, const UDirectionalLightComponent* Light, const FVector& SurfacePos, FHitResult& OutHit, const float TraceDistance = 2000.f);
+	static float GetDirectionalLightLevel(const UWorld* World, const UDirectionalLightComponent* Light, const FVector& SurfacePos, TArray<AActor*> ActorsToIgnore, FHitResult& OutHit, const float TraceDistance = 2000.f, const ECollisionChannel Channel = ECC_Visibility);
 
 	/** The current light level */
 	UPROPERTY()

@@ -41,7 +41,7 @@ float ULightSenseComponent::CalculateLightLevel(UObject* WorldContextObject, con
 	return LightVisibility;
 }
 
-float ULightSenseComponent::GetSingleLightLevel(UObject* WorldContextObject, const ULightComponent* Light, const FVector& SurfacePos, TArray<AActor*> ActorsToIgnore, FHitResult& OutHit, TArray<FName> IgnoreLightTags, const float TraceDistance /*= 2000.f*/, const ECollisionChannel Channel /*= ECC_Visibility*/, const bool bUsePointLights /*= true*/, const bool bUseSpotlights /*= true*/, const bool bUseDirectionalLights /*= true*/)
+float ULightSenseComponent::GetSingleLightLevel(UObject* WorldContextObject, const ULightComponent* Light, const FVector& SurfacePos, TArray<AActor*> ActorsToIgnore, FHitResult& OutHit, TArray<FName> IgnoreLightTags, const float TraceDistance /*= 2000.f*/, const ECollisionChannel Channel /*= ECC_Visibility*/, const bool bUsePointLights /*= true*/, const bool bUseSpotlights /*= true*/, const bool bUseDirectionalLights /*= true*/, const bool bDebug /*= false*/)
 {
 	UWorld* World = GEngine->GetWorldFromContextObject(WorldContextObject, EGetWorldErrorMode::LogAndReturnNull);
 	
@@ -70,7 +70,7 @@ float ULightSenseComponent::GetSingleLightLevel(UObject* WorldContextObject, con
 					if (auto* SpotLight = Cast<USpotLightComponent>(Light))
 					{
 						if (bUseSpotlights)
-							LightStrength = GetSpotLightLevel(World, SpotLight, SurfacePos, OutHit, Channel);
+							LightStrength = GetSpotLightLevel(World, SpotLight, SurfacePos, ActorsToIgnore, OutHit, Channel);
 					}
 					else if (auto* PointLight = Cast<UPointLightComponent>(Light))
 					{
@@ -82,10 +82,24 @@ float ULightSenseComponent::GetSingleLightLevel(UObject* WorldContextObject, con
 			else if (auto* DirectionalLight = Cast<UDirectionalLightComponent>(Light))
 			{
 				if (bUseDirectionalLights)
-					LightStrength = GetDirectionalLightLevel(World, DirectionalLight, SurfacePos, OutHit, TraceDistance);
+					LightStrength = GetDirectionalLightLevel(World, DirectionalLight, SurfacePos, ActorsToIgnore, OutHit, TraceDistance, Channel);
 			}
 		}
 	}
+
+	if (bDebug)
+	{
+		if (OutHit.GetActor())
+		{
+			DrawDebugLine(World, OutHit.TraceStart, OutHit.TraceEnd, FColor::Green, false, 1.f, 0, 2.f);
+			DrawDebugPoint(World, OutHit.ImpactPoint, 5.f, FColor::Red, false, 1.f);
+		}
+		else
+		{
+			DrawDebugLine(World, OutHit.TraceStart, OutHit.TraceEnd, FColor::Red, false, 1.f, 0, 1.f);
+		}
+	}
+
 	return LightStrength;
 }
 
@@ -115,7 +129,7 @@ void ULightSenseComponent::BeginPlay()
 	Super::BeginPlay();
 }
 
-float ULightSenseComponent::GetSpotLightLevel(const UWorld* World, const USpotLightComponent* Light, const FVector& SurfacePos, FHitResult& OutHit, const ECollisionChannel Channel /*= ECC_Visibility*/) 
+float ULightSenseComponent::GetSpotLightLevel(const UWorld* World, const USpotLightComponent* Light, const FVector& SurfacePos, TArray<AActor*> ActorsToIgnore, FHitResult& OutHit, const ECollisionChannel Channel /*= ECC_Visibility*/) 
 {
 	float LightVisibility = 0.f;
 	if (ensure(Light))
@@ -138,7 +152,7 @@ float ULightSenseComponent::GetSpotLightLevel(const UWorld* World, const USpotLi
 
 			// Determine whether the surface is in light based on line trace
 			if (AngleToSurface < LightAngle)
-				LightVisibility = GetPointLightLevel(World, Light, SurfacePos, {}, OutHit, Channel);
+				LightVisibility = GetPointLightLevel(World, Light, SurfacePos, ActorsToIgnore, OutHit, Channel);
 		}
 	}
 	return LightVisibility;
@@ -167,34 +181,22 @@ float ULightSenseComponent::GetPointLightLevel(const UWorld* World, const UPoint
 		{
 			float Distance = FVector::Distance(SurfacePos, Light->GetComponentLocation());
 			LightVisibility = 1-UKismetMathLibrary::NormalizeToRange(Distance, ClearVisibleRange, VisibleRange);
-			//DrawDebugLine(World, SurfacePos, Light->GetComponentLocation(), FColor::Red, false, 1.f, 0, 1.f);
-		}
-		else
-		{
-			//DrawDebugLine(World, SurfacePos, Light->GetComponentLocation(), FColor::Green, false, 1.f, 0, 1.f);
-			//DrawDebugPoint(World, OutHit.ImpactPoint, 5.f, FColor::Red, false, 1.f);
 		}
 	}
 	return FMath::Clamp(LightVisibility, 0.f, 1.f);
 }
 
-float ULightSenseComponent::GetDirectionalLightLevel(const UWorld* World, const UDirectionalLightComponent* Light, const FVector& SurfacePos, FHitResult& OutHit, const float TraceDistance /*= 2000.f*/)
+float ULightSenseComponent::GetDirectionalLightLevel(const UWorld* World, const UDirectionalLightComponent* Light, const FVector& SurfacePos, TArray<AActor*> ActorsToIgnore, FHitResult& OutHit, const float TraceDistance /*= 2000.f*/, const ECollisionChannel Channel /*= ECC_Visibility*/)
 {
 	bool bTraced = false;
 	if (ensure(Light))
 	{
 		FVector LightDirection = UKismetMathLibrary::GetForwardVector(Light->GetComponentRotation()) * -1;
 		FVector EndPos = SurfacePos + (LightDirection * TraceDistance);
+		FCollisionQueryParams CollisionParams = FCollisionQueryParams::DefaultQueryParam;
+		CollisionParams.AddIgnoredActors(ActorsToIgnore);
 
-		bTraced = World->LineTraceSingleByChannel(OutHit, SurfacePos, EndPos, ECC_Visibility);
-		if (bTraced)
-		{
-			//DrawDebugLine(GetWorld(), SurfacePos, EndPos, FColor::Green, false, 1.f, 0, 1.f);
-		}
-		else
-		{
-			//DrawDebugLine(GetWorld(), SurfacePos, EndPos, FColor::Red, false, 1.f, 0, 1.f);
-		}
+		bTraced = World->LineTraceSingleByChannel(OutHit, SurfacePos, EndPos, Channel, CollisionParams);
 	}
 	return bTraced ? 0.f : 1.f;
 }
