@@ -38,6 +38,12 @@ void AEnemyController::IncrementAlertness(float Amount)
 				// Lose Interest timer is canceled if the player is visible
 				GetWorldTimerManager().ClearTimer(LoseInterestHandle);
 			}
+
+			// Search location if just patrolling
+			if (GetEnemyState() == EEnemyState::Idle)
+			{
+				SetEnemyState(EEnemyState::Searching);
+			}
 		}
 		else
 		{
@@ -195,6 +201,16 @@ void AEnemyController::PerceptionUpdated(AActor* Actor, FAIStimulus Stimulus)
 void AEnemyController::SetEnemyState(EEnemyState EnemyState)
 {
 	Blackboard->SetValueAsEnum(BBEnemyState, (uint8) EnemyState);
+}
+
+EEnemyState AEnemyController::GetEnemyState()
+{
+	EEnemyState State = EEnemyState::Idle;
+	if (Blackboard)
+	{
+		State = (EEnemyState) Blackboard->GetValueAsEnum(BBEnemyState);
+	}
+	return State;
 }
 
 void AEnemyController::ExpiredStimulus(const FAIStimulus& StimulusStore)

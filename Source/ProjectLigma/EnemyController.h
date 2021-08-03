@@ -96,6 +96,9 @@ protected:
 	void SetEnemyState(EEnemyState EnemyState);
 
 	UFUNCTION()
+	EEnemyState GetEnemyState();
+
+	UFUNCTION()
 	void ExpiredStimulus(const FAIStimulus& StimulusStore);
 
 private:
