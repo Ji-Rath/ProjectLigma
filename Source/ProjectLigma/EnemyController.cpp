@@ -42,6 +42,7 @@ void AEnemyController::IncrementAlertness(float Amount)
 		else
 		{
 			SetEnemyState(EEnemyState::Searching);
+			bSeePlayer = false;
 		}
 	}
 	
