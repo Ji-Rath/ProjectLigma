@@ -188,7 +188,7 @@ void AEnemyController::PerceptionUpdated(AActor* Actor, FAIStimulus Stimulus)
 			if (!bIsSameTarget)
 			{
 				IncrementAlertness(5);
-				Blackboard->SetValueAsObject(BBPlayerTarget, Actor);
+				//Blackboard->SetValueAsObject(BBPlayerTarget, Actor);
 			}
 
 			// Input data to blackboard to be computed in BT
