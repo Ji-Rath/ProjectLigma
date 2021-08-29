@@ -81,8 +81,8 @@ void AEnemyController::BeginPlay()
 {
 	Super::BeginPlay();
 
-	SightID = UAISense::GetSenseID(UAISense_Sight::StaticClass());;
-	HearingID = UAISense::GetSenseID(UAISense_Hearing::StaticClass());;
+	SightID = UAISense::GetSenseID(UAISense_Sight::StaticClass());
+	HearingID = UAISense::GetSenseID(UAISense_Hearing::StaticClass());
 
 	PerceptionComponent->OnTargetPerceptionUpdated.AddDynamic(this, &AEnemyController::PerceptionUpdated);
 
