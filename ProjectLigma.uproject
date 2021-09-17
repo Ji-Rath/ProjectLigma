@@ -20,6 +20,11 @@
 			"Name": "AdvancedFadeObjects",
 			"Enabled": true,
 			"MarketplaceURL": "com.epicgames.launcher://ue/marketplace/product/5797fa36906648ba8ffdeb6ee94c903e"
+		},
+		{
+			"Name": "VaFogOfWar",
+			"Enabled": false,
+			"MarketplaceURL": "com.epicgames.launcher://ue/marketplace/content/cf7668a20dde4ef6937eaab417bf55cf"
 		}
 	]
 }
