@@ -1,6 +1,7 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 #include "RegisterToFOW.h"
 #include "FogOfWarManager.h"
+#include "Kismet/GameplayStatics.h"
 
 
 
@@ -21,6 +22,10 @@ void URegisterToFOW::BeginPlay()
 	UE_LOG(LogTemp, Log, TEXT("I am alive %s"), *ObjectName);
 
 	//registering the actor to the FOW Manager
+	if (Manager == nullptr)
+	{
+		Manager = Cast<AFogOfWarManager>(UGameplayStatics::GetActorOfClass(GetWorld(), AFogOfWarManager::StaticClass()));
+	}
 
 	if (Manager != nullptr) {
 		UE_LOG(LogTemp, Log, TEXT("Found Manager"));
@@ -30,6 +35,7 @@ void URegisterToFOW::BeginPlay()
 	else {
 		UE_LOG(LogTemp, Log, TEXT("Please attach a FOW Manager"));
 	}
+	
 
 }
 
