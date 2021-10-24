@@ -34,9 +34,13 @@ public:
 	UPROPERTY(BlueprintAssignable)
 	FPlayerInteract OnInteract;
 
-	/** Called when the player wants to interact with the currently viewed interactable */
-	UFUNCTION(BlueprintCallable)
-	void Interact();
+	/**
+	 * Called when the player wants to interact with the currently viewed interactable
+	 * @param returns interacted actor
+	 * @return whether the interaction was successful
+	*/
+	UFUNCTION(BlueprintCallable)	
+	AInteractable* Interact(bool& bSuccess);
 
 protected:
 	//Store interact actor that the player is currently looking at
