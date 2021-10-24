@@ -41,10 +41,18 @@ void UPlayerPushComponent::TickComponent(float DeltaTime, enum ELevelTick TickTy
 		FHitResult OutHit;
 		GetWorld()->LineTraceSingleByChannel(OutHit, OwnerLocation, OwnerLocation + (UKismetMathLibrary::GetForwardVector(TargetRotation) * MaxObjectDistance), ECC_Visibility);
 
+		AToggleInteractable* PushBox = Cast<AToggleInteractable>(PhysicsHandle->GetGrabbedComponent()->GetOwner());
 		/* Stop pushing if the object is no longer infront of the player */
 		if (OutHit.GetComponent() != PhysicsHandle->GetGrabbedComponent())
 		{
-			AToggleInteractable* PushBox = Cast<AToggleInteractable>(PhysicsHandle->GetGrabbedComponent()->GetOwner());
+			PushBox->SetState(GetOwner(), false);
+		}
+
+		/* Stop pushing if the object is no longer infront of the player */
+		FHitResult BoxHit;
+		UStaticMeshComponent* BoxMesh = Cast<UStaticMeshComponent>(PhysicsHandle->GetGrabbedComponent());
+		if (BoxMesh && !GetWorld()->LineTraceSingleByChannel(BoxHit, BoxMesh->GetCenterOfMass(), BoxMesh->GetCenterOfMass() + (100.f * FVector(0.f, 0.f, -1.f)), ECC_Visibility))
+		{
 			PushBox->SetState(GetOwner(), false);
 		}
 
@@ -52,10 +60,15 @@ void UPlayerPushComponent::TickComponent(float DeltaTime, enum ELevelTick TickTy
 		if (FVector::Distance(OutHit.ImpactPoint, OwnerLocation) < MinObjectDistance)
 		{
 			TargetLocation += UKismetMathLibrary::GetForwardVector(TargetRotation) * (MinObjectDistance - FVector::Distance(OutHit.ImpactPoint, OwnerLocation));
+			FVector CurrentLocation;
+			FRotator CurrentRotation;
+			PhysicsHandle->GetTargetLocationAndRotation(CurrentLocation, CurrentRotation);
+			TargetLocation = UKismetMathLibrary::VInterpTo(CurrentLocation, TargetLocation, DeltaTime, 5.f);
 		}
 
 		/** Update physics handle target location */
 		PhysicsHandle->SetTargetLocation(TargetLocation);
+		TargetRotation = UKismetMathLibrary::MakeRotFromX(OutHit.ImpactNormal * -1.f);
 	}
 }
 
@@ -79,7 +92,7 @@ void UPlayerPushComponent::PushObject(UPrimitiveComponent* PushComponent)
 	TargetOffset = OutHit.ImpactPoint - GetOwner()->GetActorLocation();
 
 	/* Grab object */
-	PhysicsHandle->GrabComponentAtLocationWithRotation(PushComponent, FName(), OutHit.ImpactPoint, PushComponent->GetComponentRotation());
+	PhysicsHandle->GrabComponentAtLocationWithRotation(PushComponent, FName(), OutHit.ImpactPoint, FRotator(0.f,0.f,PushComponent->GetComponentRotation().Yaw));
 
 	OnPushObject.Broadcast(true);
 }
